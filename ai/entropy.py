@@ -68,9 +68,26 @@ Output:
     wind         0.048127
 
 """
-from math import log
+from math import log2
 
 from tabulate import tabulate
+
+
+def info_function(values):
+    """
+    Calculates the information function. Result will be between 0 and 1.
+    Ex: info_function([x, y]) =
+        I(x,y) = -(x/x+y)*log2(x/x+y) - (y/x+y)*log2(y/x+y)
+
+    :param values: List of occurrences of each value.
+    :return: The result of the information function.
+    """
+    total = sum(values)
+    fracs = [value / total for value in values]
+    i = 0
+    for frac in fracs:
+        i -= frac * log2(frac)
+    return i
 
 
 class Attribute:
@@ -129,7 +146,7 @@ class SampleSet:
         for _, v in s.items():
             frac = v / c
             if frac != 0:
-                entropy -= frac * log(frac, 2)
+                entropy -= frac * log2(frac)
         return entropy
 
     def attribute_entropy(self, attr_index, value) -> float:
@@ -151,7 +168,7 @@ class SampleSet:
         for _, v in s.items():
             frac = v / c
             if frac != 0:
-                entropy -= frac * log(frac, 2)
+                entropy -= frac * log2(frac)
         return entropy
 
     def gain(self, attribute) -> float:
