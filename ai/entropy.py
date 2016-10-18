@@ -86,7 +86,8 @@ def info_function(values):
     fracs = [value / total for value in values]
     i = 0
     for frac in fracs:
-        i -= frac * log2(frac)
+        if frac != 0:
+            i -= frac * log2(frac)
     return i
 
 
@@ -149,7 +150,7 @@ class SampleSet:
                 entropy -= frac * log2(frac)
         return entropy
 
-    def attribute_entropy(self, attr_index, value) -> float:
+    def attribute_entropy(self, attr, value) -> float:
         """
         Entropy(Sweak) = - (6/8)*log2(6/8) - (2/8)*log2(2/8) = 0.811
 
@@ -157,6 +158,10 @@ class SampleSet:
         :param value: Value of the attribute to be calculated (ex: 'weak')
         :return: The entropy of the value
         """
+        attr_index = attr
+        if isinstance(attr, str):
+            attr_index = self.index_of_attribute(attr)
+
         c = 0  # number of samples that match feature
         s = dict.fromkeys(self.classes, 0)  # result counter for feature
         for x in self.samples:
@@ -170,6 +175,44 @@ class SampleSet:
             if frac != 0:
                 entropy -= frac * log2(frac)
         return entropy
+
+    def attribute_gain(self, attr1, value, attr2):
+        """
+        Gain(attr1.value, attr2)
+        :param attr1: attribute for the value
+        :param value: value of attr1
+        :param attr2: attribute to calculate gain for
+        :return: the gain of attr2 given attr1.value
+        """
+        attr1_index = self.index_of_attribute(attr1)
+        attr2_index = self.index_of_attribute(attr2)
+        # initialize gain with entropy of attr1
+        gain = self.attribute_entropy(attr1_index, value)
+
+        # get samples that match attr1.value
+        samples = [x for x in self.samples if x.values[attr1_index] == value]
+
+        # split samples into categories by their value for attr2
+        cats = dict.fromkeys(self.attributes[attr2_index].values, [])
+        for s in samples:
+            cats[s.values[attr2_index]].append(s)
+
+        # split samples by results
+        results = {}
+        for k, l in cats.items():
+            s = dict.fromkeys(self.classes, 0)
+            for sample in l:
+                if sample.values[attr2_index] == k:
+                    s[sample.result] += 1
+            results[k] = s
+
+        n = len(samples)
+        for _, x in results.items():
+            l = []
+            for _, c in x.items():
+                l.append(c)
+            gain -= (sum(l) / n) * info_function(l)
+        return gain
 
     def gain(self, attribute) -> float:
         """
@@ -194,7 +237,11 @@ class SampleSet:
         return gain
 
     def index_of_attribute(self, attribute):
-        # find the index of the attribute since it is a tuple and not a dict
+        """
+        Finds the index of the attribute since it is a tuple and not a dict
+        :param name: The name of the attribute to look for
+        :return: The index of the attribute.
+        """
         for i, x in enumerate(self.attributes):
             if x.name == attribute:
                 return i
